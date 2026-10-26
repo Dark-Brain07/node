@@ -126,10 +126,10 @@ Typical ways of working with internal fields are:
 * `obj->GetInternalField(i)` to get a JavaScript value from an internal field.
 * `obj->SetInternalField(i, v)` to store a JavaScript value in an
   internal field.
-* `obj->GetAlignedPointerFromInternalField(i)` to get a `void*` pointer from an
-  internal field.
-* `obj->SetAlignedPointerInInternalField(i, p)` to store a `void*` pointer in an
-  internal field.
+* `obj->GetAlignedPointerFromInternalField(i, EmbedderDataTag::kDefault)` to get
+  a `void*` pointer from an internal field.
+* `obj->SetAlignedPointerInInternalField(i, p, EmbedderDataTag::kDefault)` to store
+  a `void*` pointer in an internal field.
 
 [`Context`][]s provide the same feature under the name “embedder data”.
 
@@ -506,10 +506,15 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 }  // namespace util
 }  // namespace node
 
-// The first argument passed to `NODE_BINDING_EXTERNAL_REFERENCE`,
-// which is `util` here, needs to be added to the
-// `EXTERNAL_REFERENCE_BINDING_LIST_BASE` list in node_external_reference.h
 NODE_BINDING_EXTERNAL_REFERENCE(util, node::util::RegisterExternalReferences)
+```
+
+And add the first argument passed to `NODE_BINDING_EXTERNAL_REFERENCE` to
+the list of external references in `src/node_external_reference.h`:
+
+```cpp
+#define EXTERNAL_REFERENCE_LIST_BASE(V) \
+  V(util) \
 ```
 
 Otherwise, you might see an error message like this when building the

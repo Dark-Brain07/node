@@ -73,7 +73,8 @@ using v8::Value;
   V(10, number_of_detached_contexts, kNumberOfDetachedContextsIndex)           \
   V(11, total_global_handles_size, kTotalGlobalHandlesSizeIndex)               \
   V(12, used_global_handles_size, kUsedGlobalHandlesSizeIndex)                 \
-  V(13, external_memory, kExternalMemoryIndex)
+  V(13, external_memory, kExternalMemoryIndex)                                 \
+  V(14, total_allocated_bytes, kTotalAllocatedBytes)
 
 #define V(a, b, c) +1
 static constexpr size_t kHeapStatisticsPropertiesCount =
@@ -752,7 +753,7 @@ void Initialize(Local<Object> target,
   // GCProfiler
   Local<FunctionTemplate> t =
       NewFunctionTemplate(env->isolate(), GCProfiler::New);
-  t->InstanceTemplate()->SetInternalFieldCount(BaseObject::kInternalFieldCount);
+  t->InstanceTemplate()->SetInternalFieldCount(GCProfiler::kInternalFieldCount);
   SetProtoMethod(env->isolate(), t, "start", GCProfiler::Start);
   SetProtoMethod(env->isolate(), t, "stop", GCProfiler::Stop);
   SetConstructorFunction(context, target, "GCProfiler", t);

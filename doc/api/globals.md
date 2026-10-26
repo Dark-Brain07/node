@@ -21,6 +21,14 @@ The objects listed here are specific to Node.js. There are [built-in objects][]
 that are part of the JavaScript language itself, which are also globally
 accessible.
 
+## `__dirname`
+
+This variable may appear to be global but is not. See [`__dirname`][].
+
+## `__filename`
+
+This variable may appear to be global but is not. See [`__filename`][].
+
 ## Class: `AbortController`
 
 <!-- YAML
@@ -77,7 +85,7 @@ added:
 
 * Type: {AbortSignal}
 
-### Class: `AbortSignal`
+## Class: `AbortSignal`
 
 <!-- YAML
 added:
@@ -90,7 +98,7 @@ added:
 The `AbortSignal` is used to notify observers when the
 `abortController.abort()` method is called.
 
-#### Static method: `AbortSignal.abort([reason])`
+### Static method: `AbortSignal.abort([reason])`
 
 <!-- YAML
 added:
@@ -109,7 +117,7 @@ changes:
 
 Returns a new already aborted `AbortSignal`.
 
-#### Static method: `AbortSignal.timeout(delay)`
+### Static method: `AbortSignal.timeout(delay)`
 
 <!-- YAML
 added:
@@ -122,7 +130,7 @@ added:
 
 Returns a new `AbortSignal` which will be aborted in `delay` milliseconds.
 
-#### Static method: `AbortSignal.any(signals)`
+### Static method: `AbortSignal.any(signals)`
 
 <!-- YAML
 added:
@@ -136,7 +144,7 @@ Returns a new `AbortSignal` which will be aborted if any of the provided
 signals are aborted. Its [`abortSignal.reason`][] will be set to whichever
 one of the `signals` caused it to be aborted.
 
-#### Event: `'abort'`
+### Event: `'abort'`
 
 <!-- YAML
 added:
@@ -173,7 +181,7 @@ listener, use the `once()` method) to ensure that the event listener is
 removed as soon as the `'abort'` event is handled. Failure to do so may
 result in memory leaks.
 
-#### `abortSignal.aborted`
+### `abortSignal.aborted`
 
 <!-- YAML
 added:
@@ -181,9 +189,11 @@ added:
   - v14.17.0
 -->
 
-* Type: {boolean} True after the `AbortController` has been aborted.
+* Type: {boolean}
 
-#### `abortSignal.onabort`
+True after the `AbortController` has been aborted.
+
+### `abortSignal.onabort`
 
 <!-- YAML
 added:
@@ -196,7 +206,7 @@ added:
 An optional callback function that may be set by user code to be notified
 when the `abortController.abort()` function has been called.
 
-#### `abortSignal.reason`
+### `abortSignal.reason`
 
 <!-- YAML
 added:
@@ -214,7 +224,7 @@ ac.abort(new Error('boom!'));
 console.log(ac.signal.reason);  // Error: boom!
 ```
 
-#### `abortSignal.throwIfAborted()`
+### `abortSignal.throwIfAborted()`
 
 <!-- YAML
 added:
@@ -224,6 +234,22 @@ added:
 
 If `abortSignal.aborted` is `true`, throws `abortSignal.reason`.
 
+## `atob(data)`
+
+<!-- YAML
+added: v16.0.0
+-->
+
+> Stability: 3 - Legacy. Use `Buffer.from(data, 'base64')` instead.
+
+Global alias for [`buffer.atob()`][].
+
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/buffer-atob-btoa)):
+
+```bash
+npx codemod@latest @nodejs/buffer-atob-btoa
+```
+
 ## Class: `Blob`
 
 <!-- YAML
@@ -231,6 +257,30 @@ added: v18.0.0
 -->
 
 See {Blob}.
+
+## Class: `BroadcastChannel`
+
+<!-- YAML
+added: v18.0.0
+-->
+
+See {BroadcastChannel}.
+
+## `btoa(data)`
+
+<!-- YAML
+added: v16.0.0
+-->
+
+> Stability: 3 - Legacy. Use `buf.toString('base64')` instead.
+
+Global alias for [`buffer.btoa()`][].
+
+An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/buffer-atob-btoa)):
+
+```bash
+npx codemod@latest @nodejs/buffer-atob-btoa
+```
 
 ## Class: `Buffer`
 
@@ -255,48 +305,6 @@ changes:
 -->
 
 A browser-compatible implementation of [`ByteLengthQueuingStrategy`][].
-
-## `__dirname`
-
-This variable may appear to be global but is not. See [`__dirname`][].
-
-## `__filename`
-
-This variable may appear to be global but is not. See [`__filename`][].
-
-## `atob(data)`
-
-<!-- YAML
-added: v16.0.0
--->
-
-> Stability: 3 - Legacy. Use `Buffer.from(data, 'base64')` instead.
-
-Global alias for [`buffer.atob()`][].
-
-An automated migration is available ([source](https://github.com/nodejs/userland-migrations/tree/main/recipes/util-is)):
-
-```bash
-npx codemod@latest @nodejs/buffer-atob-btoa
-```
-
-## Class: `BroadcastChannel`
-
-<!-- YAML
-added: v18.0.0
--->
-
-See {BroadcastChannel}.
-
-## `btoa(data)`
-
-<!-- YAML
-added: v16.0.0
--->
-
-> Stability: 3 - Legacy. Use `buf.toString('base64')` instead.
-
-Global alias for [`buffer.btoa()`][].
 
 ## `clearImmediate(immediateObject)`
 
@@ -470,6 +478,14 @@ changes:
 
 A browser-compatible implementation of [`DecompressionStream`][].
 
+## Class: `DOMException`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+The WHATWG {DOMException} class.
+
 ## `ErrorEvent`
 
 <!-- YAML
@@ -574,10 +590,10 @@ setGlobalDispatcher(new MyAgent());
 
 The following globals are available to use with `fetch`:
 
-* [`FormData`](https://nodejs.org/api/globals.html#class-formdata)
-* [`Headers`](https://nodejs.org/api/globals.html#class-headers)
-* [`Request`](https://nodejs.org/api/globals.html#request)
-* [`Response`](https://nodejs.org/api/globals.html#response).
+* [`FormData`][]
+* [`Headers`][]
+* [`Request`][]
+* [`Response`][]
 
 ## Class: `File`
 
@@ -644,13 +660,28 @@ A browser-compatible implementation of {Headers}.
 
 <!-- YAML
 added: v22.4.0
+changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/60351
+    description: Accessing the `localStorage` global without providing
+                 `--localstorage-file` now throws a `DOMException`, for
+                 compliance with the Web Storage specification.
+  - version: v25.0.0
+    pr-url: https://github.com/nodejs/node/pull/57666
+    description: When webstorage is enabled and `--localstorage-file` is not
+                 provided, accessing the `localStorage` global now returns an
+                 empty object.
+  - version: v25.0.0
+    pr-url: https://github.com/nodejs/node/pull/57666
+    description: This API is no longer behind `--experimental-webstorage` runtime flag.
 -->
+
+> Stability: 1.2 - Release candidate. Disable this API with [`--no-experimental-webstorage`][].
 
 A browser-compatible implementation of [`localStorage`][]. Data is stored
 unencrypted in the file specified by the [`--localstorage-file`][] CLI flag.
 The maximum amount of data that can be stored is 10 MB.
 Any modification of this data outside of the Web Storage API is not supported.
-Disable this API with the [`--no-webstorage`][] (or its alias `--no-experimental-webstorage`) CLI flag.
 `localStorage` data is not stored per user or per request when used in the context
 of a server, it is shared across all users and requests.
 
@@ -746,7 +777,7 @@ console.log(`The preferred language of the Node.js instance has the tag '${navig
 added: v21.2.0
 -->
 
-* Type: {Array<string>}
+* Type: {string\[]}
 
 The `navigator.languages` read-only property returns an array of strings
 representing the preferred languages of the Node.js instance.
@@ -758,36 +789,6 @@ The fallback value on builds without ICU is `['en-US']`.
 
 ```js
 console.log(`The preferred languages are '${navigator.languages}'`);
-```
-
-### `navigator.platform`
-
-<!-- YAML
-added: v21.2.0
--->
-
-* Type: {string}
-
-The `navigator.platform` read-only property returns a string identifying the
-platform on which the Node.js instance is running.
-
-```js
-console.log(`This process is running on ${navigator.platform}`);
-```
-
-### `navigator.userAgent`
-
-<!-- YAML
-added: v21.1.0
--->
-
-* Type: {string}
-
-The `navigator.userAgent` read-only property returns user agent
-consisting of the runtime name and major version number.
-
-```js
-console.log(`The user-agent is ${navigator.userAgent}`); // Prints "Node.js/21"
 ```
 
 ### `navigator.locks`
@@ -839,6 +840,44 @@ navigator.locks.request('shared_resource', { mode: 'shared' }, async (lock) => {
 
 See [`worker_threads.locks`][] for detailed API documentation.
 
+### `navigator.platform`
+
+<!-- YAML
+added: v21.2.0
+-->
+
+* Type: {string}
+
+The `navigator.platform` read-only property returns a string identifying the
+platform on which the Node.js instance is running.
+
+```js
+console.log(`This process is running on ${navigator.platform}`);
+```
+
+### `navigator.userAgent`
+
+<!-- YAML
+added: v21.1.0
+-->
+
+* Type: {string}
+
+The `navigator.userAgent` read-only property returns user agent
+consisting of the runtime name and major version number.
+
+```js
+console.log(`The user-agent is ${navigator.userAgent}`); // Prints "Node.js/21"
+```
+
+## `performance`
+
+<!-- YAML
+added: v16.0.0
+-->
+
+The [`perf_hooks.performance`][] object.
+
 ## Class: `PerformanceEntry`
 
 <!-- YAML
@@ -889,14 +928,6 @@ added: v19.0.0
 The `PerformanceResourceTiming` class. See [`PerformanceResourceTiming`][] for
 more details.
 
-## `performance`
-
-<!-- YAML
-added: v16.0.0
--->
-
-The [`perf_hooks.performance`][] object.
-
 ## `process`
 
 <!-- YAML
@@ -944,6 +975,14 @@ DataHandler.prototype.load = async function load(key) {
   this.emit('load', data);
 };
 ```
+
+## Class: `QuotaExceededError`
+
+<!-- YAML
+added: REPLACEME
+-->
+
+The WHATWG {QuotaExceededError} class. Extends {DOMException}.
 
 ## Class: `ReadableByteStreamController`
 
@@ -1029,6 +1068,24 @@ changes:
 
 A browser-compatible implementation of [`ReadableStreamDefaultReader`][].
 
+## Class: `Request`
+
+<!-- YAML
+added:
+  - v17.5.0
+  - v16.15.0
+changes:
+  - version:
+    - v21.0.0
+    pr-url: https://github.com/nodejs/node/pull/45684
+    description: No longer experimental.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41811
+    description: No longer behind `--experimental-fetch` CLI flag.
+-->
+
+A browser-compatible implementation of {Request}.
+
 ## `require()`
 
 This variable may appear to be global but is not. See [`require()`][].
@@ -1051,31 +1108,17 @@ changes:
 
 A browser-compatible implementation of {Response}.
 
-## Class: `Request`
-
-<!-- YAML
-added:
-  - v17.5.0
-  - v16.15.0
-changes:
-  - version:
-    - v21.0.0
-    pr-url: https://github.com/nodejs/node/pull/45684
-    description: No longer experimental.
-  - version: v18.0.0
-    pr-url: https://github.com/nodejs/node/pull/41811
-    description: No longer behind `--experimental-fetch` CLI flag.
--->
-
-A browser-compatible implementation of {Request}.
-
 ## `sessionStorage`
 
 <!-- YAML
 added: v22.4.0
+changes:
+  - version: v25.0.0
+    pr-url: https://github.com/nodejs/node/pull/57666
+    description: This API is no longer behind `--experimental-webstorage` runtime flag.
 -->
 
-> Stability: 1.0 - Early development.
+> Stability: 1.2 - Release candidate. Disable this API with [`--no-experimental-webstorage`][].
 
 A browser-compatible implementation of [`sessionStorage`][]. Data is stored in
 memory, with a storage quota of 10 MB. `sessionStorage` data persists only within
@@ -1111,10 +1154,9 @@ added: v0.0.1
 added: v22.4.0
 -->
 
-> Stability: 1.0 - Early development.
+> Stability: 1.2 - Release candidate. Disable this API with [`--no-experimental-webstorage`][].
 
-A browser-compatible implementation of {Storage}. Disable this API with the
-[`--no-webstorage`][] (or its alias `--no-experimental-webstorage`) CLI flag.
+A browser-compatible implementation of {Storage}.
 
 ## `structuredClone(value[, options])`
 
@@ -1139,14 +1181,6 @@ changes:
 A browser-compatible implementation of {SubtleCrypto}. This global is available
 only if the Node.js binary was compiled with including support for the
 `node:crypto` module.
-
-## Class: `DOMException`
-
-<!-- YAML
-added: v17.0.0
--->
-
-The WHATWG {DOMException} class.
 
 ## Class: `TextDecoder`
 
@@ -1328,12 +1362,14 @@ A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 [`--localstorage-file`]: cli.md#--localstorage-filefile
 [`--no-experimental-global-navigator`]: cli.md#--no-experimental-global-navigator
 [`--no-experimental-websocket`]: cli.md#--no-experimental-websocket
-[`--no-webstorage`]: cli.md#--no-webstorage
+[`--no-experimental-webstorage`]: cli.md#--no-experimental-webstorage
 [`ByteLengthQueuingStrategy`]: webstreams.md#class-bytelengthqueuingstrategy
 [`CompressionStream`]: webstreams.md#class-compressionstream
 [`CountQueuingStrategy`]: webstreams.md#class-countqueuingstrategy
 [`DecompressionStream`]: webstreams.md#class-decompressionstream
 [`EventTarget` and `Event` API]: events.md#eventtarget-and-event-api
+[`FormData`]: #class-formdata
+[`Headers`]: #class-headers
 [`LockManager`]: worker_threads.md#class-lockmanager
 [`MessageChannel`]: worker_threads.md#class-messagechannel
 [`MessagePort`]: worker_threads.md#class-messageport
@@ -1349,6 +1385,8 @@ A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 [`ReadableStreamDefaultController`]: webstreams.md#class-readablestreamdefaultcontroller
 [`ReadableStreamDefaultReader`]: webstreams.md#class-readablestreamdefaultreader
 [`ReadableStream`]: webstreams.md#class-readablestream
+[`Request`]: #class-request
+[`Response`]: #class-response
 [`TextDecoderStream`]: webstreams.md#class-textdecoderstream
 [`TextDecoder`]: util.md#class-utiltextdecoder
 [`TextEncoderStream`]: webstreams.md#class-textencoderstream
@@ -1371,7 +1409,7 @@ A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 [`clearTimeout`]: timers.md#cleartimeouttimeout
 [`console`]: console.md
 [`exports`]: modules.md#exports
-[`fetch()`]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
+[`fetch()`]: https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch
 [`globalThis`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/globalThis
 [`localStorage`]: https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
 [`module`]: modules.md#module
@@ -1383,7 +1421,7 @@ A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 [`setImmediate`]: timers.md#setimmediatecallback-args
 [`setInterval`]: timers.md#setintervalcallback-delay-args
 [`setTimeout`]: timers.md#settimeoutcallback-delay-args
-[`structuredClone`]: https://developer.mozilla.org/en-US/docs/Web/API/structuredClone
+[`structuredClone`]: https://developer.mozilla.org/en-US/docs/Web/API/Window/structuredClone
 [`window.navigator`]: https://developer.mozilla.org/en-US/docs/Web/API/Window/navigator
 [`worker_threads.locks`]: worker_threads.md#worker_threadslocks
 [browser `LockManager`]: https://developer.mozilla.org/en-US/docs/Web/API/LockManager

@@ -22,6 +22,7 @@ using v8::ArrayBuffer;
 using v8::ArrayBufferView;
 using v8::BackingStore;
 using v8::BackingStoreInitializationMode;
+using v8::BackingStoreOnFailureMode;
 using v8::Context;
 using v8::Function;
 using v8::FunctionCallbackInfo;
@@ -83,7 +84,14 @@ void Concat(const FunctionCallbackInfo<Value>& args) {
   }
 
   std::shared_ptr<BackingStore> store = ArrayBuffer::NewBackingStore(
-      isolate, total, BackingStoreInitializationMode::kUninitialized);
+      isolate,
+      total,
+      BackingStoreInitializationMode::kUninitialized,
+      BackingStoreOnFailureMode::kReturnNull);
+  if (!store) [[unlikely]] {
+    THROW_ERR_MEMORY_ALLOCATION_FAILED(isolate);
+    return;
+  }
   uint8_t* ptr = static_cast<uint8_t*>(store->Data());
   for (size_t n = 0; n < views.size(); n++) {
     uint8_t* from =
@@ -147,8 +155,7 @@ Local<FunctionTemplate> Blob::GetConstructorTemplate(Environment* env) {
   if (tmpl.IsEmpty()) {
     Isolate* isolate = env->isolate();
     tmpl = NewFunctionTemplate(isolate, nullptr);
-    tmpl->InstanceTemplate()->SetInternalFieldCount(
-        BaseObject::kInternalFieldCount);
+    tmpl->InstanceTemplate()->SetInternalFieldCount(Blob::kInternalFieldCount);
     tmpl->SetClassName(
         FIXED_ONE_BYTE_STRING(env->isolate(), "Blob"));
     SetProtoMethod(isolate, tmpl, "getReader", GetReader);
@@ -310,7 +317,7 @@ Local<FunctionTemplate> Blob::Reader::GetConstructorTemplate(Environment* env) {
     Isolate* isolate = env->isolate();
     tmpl = NewFunctionTemplate(isolate, nullptr);
     tmpl->InstanceTemplate()->SetInternalFieldCount(
-        BaseObject::kInternalFieldCount);
+        Blob::Reader::kInternalFieldCount);
     tmpl->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "BlobReader"));
     SetProtoMethod(env->isolate(), tmpl, "pull", Pull);
     env->set_blob_reader_constructor_template(tmpl);

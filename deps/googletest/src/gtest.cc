@@ -58,6 +58,7 @@
 #include <ostream>  // NOLINT
 #include <set>
 #include <sstream>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -485,6 +486,15 @@ bool ShouldEmitStackTraceForResultType(TestPartResult::Type type) {
 // AssertHelper constructor.
 AssertHelper::AssertHelper(TestPartResult::Type type, const char* file,
                            int line, const char* message)
+    : AssertHelper(
+          type, file == nullptr ? std::string_view() : std::string_view(file),
+          line,
+          message == nullptr ? std::string_view() : std::string_view(message)) {
+}
+
+AssertHelper::AssertHelper(TestPartResult::Type type,
+                           const std::string_view file, int line,
+                           const std::string_view message)
     : data_(new AssertHelperData(type, file, line, message)) {}
 
 AssertHelper::~AssertHelper() { delete data_; }
@@ -875,7 +885,11 @@ class PositiveAndNegativeUnitTestFilter {
   // and does not match the negative filter.
   bool MatchesTest(const std::string& test_suite_name,
                    const std::string& test_name) const {
+#ifdef GTEST_HAS_ABSL
+    return MatchesName(absl::StrCat(test_suite_name, ".", test_name));
+#else
     return MatchesName(test_suite_name + "." + test_name);
+#endif
   }
 
   // Returns true if and only if name matches the positive filter and does not
@@ -1086,14 +1100,14 @@ void DefaultPerThreadTestPartResultReporter::ReportTestPartResult(
 // Returns the global test part result reporter.
 TestPartResultReporterInterface*
 UnitTestImpl::GetGlobalTestPartResultReporter() {
-  internal::MutexLock lock(&global_test_part_result_reporter_mutex_);
+  internal::MutexLock lock(global_test_part_result_reporter_mutex_);
   return global_test_part_result_reporter_;
 }
 
 // Sets the global test part result reporter.
 void UnitTestImpl::SetGlobalTestPartResultReporter(
     TestPartResultReporterInterface* reporter) {
-  internal::MutexLock lock(&global_test_part_result_reporter_mutex_);
+  internal::MutexLock lock(global_test_part_result_reporter_mutex_);
   global_test_part_result_reporter_ = reporter;
 }
 
@@ -2347,7 +2361,7 @@ void TestResult::RecordProperty(const std::string& xml_element,
   if (!ValidateTestProperty(xml_element, test_property)) {
     return;
   }
-  internal::MutexLock lock(&test_properties_mutex_);
+  internal::MutexLock lock(test_properties_mutex_);
   const std::vector<TestProperty>::iterator property_with_matching_key =
       std::find_if(test_properties_.begin(), test_properties_.end(),
                    internal::TestPropertyKeyIs(test_property.key()));
@@ -2547,8 +2561,9 @@ void ReportFailureInUnknownLocation(TestPartResult::Type result_type,
   // AddTestPartResult.
   UnitTest::GetInstance()->AddTestPartResult(
       result_type,
-      nullptr,  // No info about the source file where the exception occurred.
-      -1,       // We have no info on which line caused the exception.
+      std::string_view(),  // No info about the source file where the exception
+                           // occurred.
+      -1,  // We have no info on which line caused the exception.
       message,
       "");  // No stack trace, either.
 }
@@ -5088,7 +5103,7 @@ std::string OsStackTraceGetter::CurrentStackTrace(int max_depth, int skip_count)
 
   void* caller_frame = nullptr;
   {
-    MutexLock lock(&mutex_);
+    MutexLock lock(mutex_);
     caller_frame = caller_frame_;
   }
 
@@ -5127,12 +5142,12 @@ void OsStackTraceGetter::UponLeavingGTest() GTEST_LOCK_EXCLUDED_(mutex_) {
     caller_frame = nullptr;
   }
 
-  MutexLock lock(&mutex_);
+  MutexLock lock(mutex_);
   caller_frame_ = caller_frame;
 #endif  // GTEST_HAS_ABSL
 }
 
-#ifdef GTEST_HAS_DEATH_TEST
+#ifdef GTEST_INTERNAL_HAS_PREMATURE_EXIT_FILE
 // A helper class that creates the premature-exit file in its
 // constructor and deletes the file in its destructor.
 class ScopedPrematureExitFile {
@@ -5170,7 +5185,7 @@ class ScopedPrematureExitFile {
   ScopedPrematureExitFile(const ScopedPrematureExitFile&) = delete;
   ScopedPrematureExitFile& operator=(const ScopedPrematureExitFile&) = delete;
 };
-#endif  // GTEST_HAS_DEATH_TEST
+#endif  // GTEST_INTERNAL_HAS_PREMATURE_EXIT_FILE
 
 }  // namespace internal
 
@@ -5390,13 +5405,13 @@ void UnitTest::UponLeavingGTest() {
 
 // Sets the TestSuite object for the test that's currently running.
 void UnitTest::set_current_test_suite(TestSuite* a_current_test_suite) {
-  internal::MutexLock lock(&mutex_);
+  internal::MutexLock lock(mutex_);
   impl_->set_current_test_suite(a_current_test_suite);
 }
 
 // Sets the TestInfo object for the test that's currently running.
 void UnitTest::set_current_test_info(TestInfo* a_current_test_info) {
-  internal::MutexLock lock(&mutex_);
+  internal::MutexLock lock(mutex_);
   impl_->set_current_test_info(a_current_test_info);
 }
 
@@ -5428,14 +5443,14 @@ Environment* UnitTest::AddEnvironment(Environment* env) {
 // this to report their results.  The user code should use the
 // assertion macros instead of calling this directly.
 void UnitTest::AddTestPartResult(TestPartResult::Type result_type,
-                                 const char* file_name, int line_number,
-                                 const std::string& message,
+                                 const std::string_view file_name,
+                                 int line_number, const std::string& message,
                                  const std::string& os_stack_trace)
     GTEST_LOCK_EXCLUDED_(mutex_) {
   Message msg;
   msg << message;
 
-  internal::MutexLock lock(&mutex_);
+  internal::MutexLock lock(mutex_);
   if (!impl_->gtest_trace_stack().empty()) {
     msg << "\n" << GTEST_NAME_ << " trace:";
 
@@ -5515,7 +5530,7 @@ void UnitTest::RecordProperty(const std::string& key,
 // We don't protect this under mutex_, as we only support calling it
 // from the main thread.
 int UnitTest::Run() {
-#ifdef GTEST_HAS_DEATH_TEST
+#ifdef GTEST_INTERNAL_HAS_PREMATURE_EXIT_FILE
   const bool in_death_test_child_process =
       !GTEST_FLAG_GET(internal_run_death_test).empty();
 
@@ -5546,7 +5561,7 @@ int UnitTest::Run() {
           : internal::posix::GetEnv("TEST_PREMATURE_EXIT_FILE"));
 #else
   const bool in_death_test_child_process = false;
-#endif  // GTEST_HAS_DEATH_TEST
+#endif  // GTEST_INTERNAL_HAS_PREMATURE_EXIT_FILE
 
   // Captures the value of GTEST_FLAG(catch_exceptions).  This value will be
   // used for the duration of the program.
@@ -5618,7 +5633,7 @@ const char* UnitTest::original_working_dir() const {
 // or NULL if no test is running.
 const TestSuite* UnitTest::current_test_suite() const
     GTEST_LOCK_EXCLUDED_(mutex_) {
-  internal::MutexLock lock(&mutex_);
+  internal::MutexLock lock(mutex_);
   return impl_->current_test_suite();
 }
 
@@ -5626,7 +5641,7 @@ const TestSuite* UnitTest::current_test_suite() const
 #ifndef GTEST_REMOVE_LEGACY_TEST_CASEAPI_
 const TestCase* UnitTest::current_test_case() const
     GTEST_LOCK_EXCLUDED_(mutex_) {
-  internal::MutexLock lock(&mutex_);
+  internal::MutexLock lock(mutex_);
   return impl_->current_test_suite();
 }
 #endif
@@ -5635,7 +5650,7 @@ const TestCase* UnitTest::current_test_case() const
 // or NULL if no test is running.
 const TestInfo* UnitTest::current_test_info() const
     GTEST_LOCK_EXCLUDED_(mutex_) {
-  internal::MutexLock lock(&mutex_);
+  internal::MutexLock lock(mutex_);
   return impl_->current_test_info();
 }
 
@@ -5659,13 +5674,13 @@ UnitTest::~UnitTest() { delete impl_; }
 // Google Test trace stack.
 void UnitTest::PushGTestTrace(const internal::TraceInfo& trace)
     GTEST_LOCK_EXCLUDED_(mutex_) {
-  internal::MutexLock lock(&mutex_);
+  internal::MutexLock lock(mutex_);
   impl_->gtest_trace_stack().push_back(trace);
 }
 
 // Pops a trace from the per-thread Google Test trace stack.
 void UnitTest::PopGTestTrace() GTEST_LOCK_EXCLUDED_(mutex_) {
-  internal::MutexLock lock(&mutex_);
+  internal::MutexLock lock(mutex_);
   impl_->gtest_trace_stack().pop_back();
 }
 
@@ -6088,15 +6103,17 @@ bool UnitTestImpl::RunAllTests() {
         repeater->OnEnvironmentsTearDownEnd(*parent_);
       }
     } else if (GTEST_FLAG_GET(fail_if_no_test_selected)) {
-      // If there were no tests to run, bail if we were requested to be strict.
+      // If there were no tests to run, bail if we were requested to be
+      // strict.
       constexpr char kNoTestsSelectedMessage[] =
-          "No tests were selected to run. Please make sure at least one test "
-          "exists and is not disabled! If the test is sharded, you may have "
-          "defined more shards than test cases, which is wasteful. If you also "
-          "defined --gtest_filter, that filter is taken into account, so "
-          "shards with no matching test cases will hit this error. Either "
-          "disable sharding, set --gtest_fail_if_no_test_selected=false, or "
-          "remove the filter to resolve this error.";
+          "No tests ran. Check that tests exist and are not disabled or "
+          "filtered out.\n\n"
+          "For sharded runs, this error indicates an empty shard. This can "
+          "happen if you have more shards than tests, or if --gtest_filter "
+          "leaves a shard with no tests.\n\n"
+          "To permit empty shards (e.g., when debugging with a filter), "
+          "specify \n"
+          "--gtest_fail_if_no_test_selected=false.";
       ColoredPrintf(GTestColor::kRed, "%s\n", kNoTestsSelectedMessage);
       return false;
     }

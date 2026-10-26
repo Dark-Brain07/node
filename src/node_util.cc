@@ -10,6 +10,7 @@ namespace util {
 
 using v8::ALL_PROPERTIES;
 using v8::Array;
+using v8::ArrayBuffer;
 using v8::ArrayBufferView;
 using v8::BigInt;
 using v8::Boolean;
@@ -34,6 +35,7 @@ using v8::ONLY_WRITABLE;
 using v8::Promise;
 using v8::PropertyFilter;
 using v8::Proxy;
+using v8::SharedArrayBuffer;
 using v8::SKIP_STRINGS;
 using v8::SKIP_SYMBOLS;
 using v8::StackFrame;
@@ -256,7 +258,7 @@ static void GetCallSites(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(context);
 
   CHECK_EQ(args.Length(), 1);
-  CHECK(args[0]->IsNumber());
+  CHECK(args[0]->IsUint32());
   const uint32_t frames = args[0].As<Uint32>()->Value();
   CHECK(frames >= 1 && frames <= 200);
 
@@ -318,22 +320,20 @@ static void GetCallSites(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(callsites);
 }
 
+/**
+ * Checks whether the current call directly initiated from a file inside
+ * node_modules. This checks up to `frame_limit` stack frames, until it finds
+ * a frame that is not part of node internal modules.
+ */
 static void IsInsideNodeModules(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
-  CHECK_EQ(args.Length(), 2);
-  CHECK(args[0]->IsInt32());  // frame_limit
-  // The second argument is the default value.
 
-  int frames_limit = args[0].As<v8::Int32>()->Value();
+  int frames_limit = (args.Length() > 0 && args[0]->IsInt32())
+                         ? args[0].As<v8::Int32>()->Value()
+                         : 10;
   Local<StackTrace> stack =
       StackTrace::CurrentStackTrace(isolate, frames_limit);
   int frame_count = stack->GetFrameCount();
-
-  // If the search requires looking into more than |frames_limit| frames, give
-  // up and return the specified default value.
-  if (frame_count == frames_limit) {
-    return args.GetReturnValue().Set(args[1]);
-  }
 
   bool result = false;
   for (int i = 0; i < frame_count; ++i) {
@@ -348,13 +348,11 @@ static void IsInsideNodeModules(const FunctionCallbackInfo<Value>& args) {
     if (script_name_str.starts_with("node:")) {
       continue;
     }
-    if (script_name_str.find("/node_modules/") != std::string::npos ||
-        script_name_str.find("\\node_modules\\") != std::string::npos ||
-        script_name_str.find("/node_modules\\") != std::string::npos ||
-        script_name_str.find("\\node_modules/") != std::string::npos) {
-      result = true;
-      break;
-    }
+    result = script_name_str.find("/node_modules/") != std::string::npos ||
+             script_name_str.find("\\node_modules\\") != std::string::npos ||
+             script_name_str.find("/node_modules\\") != std::string::npos ||
+             script_name_str.find("\\node_modules/") != std::string::npos;
+    break;
   }
 
   args.GetReturnValue().Set(result);
@@ -438,6 +436,30 @@ static void DefineLazyProperties(const FunctionCallbackInfo<Value>& args) {
   }
 }
 
+void ConstructSharedArrayBuffer(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  int64_t length;
+  // Note: IntegerValue() clamps its output, so excessively large input values
+  // will not overflow
+  if (!args[0]->IntegerValue(env->context()).To(&length)) {
+    return;
+  }
+  if (length < 0 ||
+      static_cast<uint64_t>(length) > ArrayBuffer::kMaxByteLength) {
+    env->ThrowRangeError("Invalid array buffer length");
+    return;
+  }
+  Local<SharedArrayBuffer> sab;
+  if (!SharedArrayBuffer::MaybeNew(env->isolate(), static_cast<size_t>(length))
+           .ToLocal(&sab)) {
+    // Note: SharedArrayBuffer::MaybeNew doesn't schedule an exception if it
+    // fails
+    env->ThrowRangeError("Array buffer allocation failed");
+    return;
+  }
+  args.GetReturnValue().Set(sab);
+}
+
 void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GetPromiseDetails);
   registry->Register(GetProxyDetails);
@@ -455,6 +477,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(IsInsideNodeModules);
   registry->Register(DefineLazyProperties);
   registry->Register(DefineLazyPropertiesGetter);
+  registry->Register(ConstructSharedArrayBuffer);
 }
 
 void Initialize(Local<Object> target,
@@ -554,9 +577,12 @@ void Initialize(Local<Object> target,
   SetMethodNoSideEffect(context, target, "getCallSites", GetCallSites);
   SetMethod(context, target, "sleep", Sleep);
   SetMethod(context, target, "parseEnv", ParseEnv);
-
   SetMethod(
       context, target, "arrayBufferViewHasBuffer", ArrayBufferViewHasBuffer);
+  SetMethod(context,
+            target,
+            "constructSharedArrayBuffer",
+            ConstructSharedArrayBuffer);
 
   Local<String> should_abort_on_uncaught_toggle =
       FIXED_ONE_BYTE_STRING(env->isolate(), "shouldAbortOnUncaughtToggle");

@@ -85,6 +85,28 @@ void Int32AbsWithOverflow::GenerateCode(MaglevAssembler* masm,
   __ EmitEagerDeoptIf(vs, DeoptimizeReason::kOverflow, this);
 }
 
+void Int32Increment::SetValueLocationConstraints() {
+  UseRegister(value_input());
+  DefineAsRegister(this);
+}
+void Int32Increment::GenerateCode(MaglevAssembler* masm,
+                                  const ProcessingState& state) {
+  Register value = ToRegister(value_input()).W();
+  Register out = ToRegister(result()).W();
+  __ Add(out, value, Immediate(1));
+}
+
+void Int32Decrement::SetValueLocationConstraints() {
+  UseRegister(value_input());
+  DefineAsRegister(this);
+}
+void Int32Decrement::GenerateCode(MaglevAssembler* masm,
+                                  const ProcessingState& state) {
+  Register value = ToRegister(value_input()).W();
+  Register out = ToRegister(result()).W();
+  __ Sub(out, value, Immediate(1));
+}
+
 void Int32IncrementWithOverflow::SetValueLocationConstraints() {
   UseRegister(value_input());
   DefineAsRegister(this);
@@ -301,7 +323,7 @@ void Int32Multiply::GenerateCode(MaglevAssembler* masm,
   __ Smull(out, left, right);
 
   // Making sure that the 32-bit output is zero-extended.
-  __ Move(out.W(), out.W());
+  __ Mov(out.W(), out.W());
 }
 
 void Int32MultiplyOverflownBits::SetValueLocationConstraints() {
@@ -446,7 +468,7 @@ void Int32MultiplyWithOverflow::GenerateCode(MaglevAssembler* masm,
 
   // Making sure that the 32-bit output is zero-extended (and moving it to the
   // right register if {out_alias_input} is true).
-  __ Move(out, res.W());
+  __ Mov(out, res.W());
 }
 
 void Int32DivideWithOverflow::SetValueLocationConstraints() {
@@ -514,7 +536,7 @@ void Int32DivideWithOverflow::GenerateCode(MaglevAssembler* masm,
   __ CompareAndBranch(temp, Immediate(0), ne,
                       __ GetDeoptLabel(this, DeoptimizeReason::kNotInt32));
 
-  __ Move(out, res);
+  __ Mov(out, res);
 }
 
 void Int32ModulusWithOverflow::SetValueLocationConstraints() {
@@ -819,6 +841,36 @@ void Float64Exponentiate::GenerateCode(MaglevAssembler* masm,
   __ CallCFunction(ExternalReference::ieee754_pow_function(), 2);
 }
 
+void Float64Min::SetValueLocationConstraints() {
+  UseRegister(left_input());
+  UseRegister(right_input());
+  DefineAsRegister(this);
+}
+
+void Float64Min::GenerateCode(MaglevAssembler* masm,
+                              const ProcessingState& state) {
+  DoubleRegister left = ToDoubleRegister(left_input());
+  DoubleRegister right = ToDoubleRegister(right_input());
+  DoubleRegister out = ToDoubleRegister(result());
+
+  __ fmin(out, left, right);
+}
+
+void Float64Max::SetValueLocationConstraints() {
+  UseRegister(left_input());
+  UseRegister(right_input());
+  DefineAsRegister(this);
+}
+
+void Float64Max::GenerateCode(MaglevAssembler* masm,
+                              const ProcessingState& state) {
+  DoubleRegister left = ToDoubleRegister(left_input());
+  DoubleRegister right = ToDoubleRegister(right_input());
+  DoubleRegister out = ToDoubleRegister(result());
+
+  __ fmax(out, left, right);
+}
+
 int Float64Ieee754Unary::MaxCallStackArgs() const { return 0; }
 void Float64Ieee754Unary::SetValueLocationConstraints() {
   UseFixed(input(), v0);
@@ -916,7 +968,6 @@ void HoleyFloat64ToMaybeNanFloat64::GenerateCode(MaglevAssembler* masm,
   __ CanonicalizeNaN(ToDoubleRegister(result()), ToDoubleRegister(input()));
 }
 
-#ifdef V8_ENABLE_UNDEFINED_DOUBLE
 void Float64ToHoleyFloat64::SetValueLocationConstraints() {
   UseRegister(input());
   DefineAsRegister(this);
@@ -929,6 +980,7 @@ void Float64ToHoleyFloat64::GenerateCode(MaglevAssembler* masm,
   __ CanonicalizeNaN(ToDoubleRegister(result()), ToDoubleRegister(input()));
 }
 
+#ifdef V8_ENABLE_UNDEFINED_DOUBLE
 void ConvertHoleNanToUndefinedNan::SetValueLocationConstraints() {
   UseRegister(input());
   DefineSameAsFirst(this);

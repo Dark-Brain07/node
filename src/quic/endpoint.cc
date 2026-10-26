@@ -1,4 +1,4 @@
-#if HAVE_OPENSSL
+#if HAVE_OPENSSL && HAVE_QUIC
 #include "guard.h"
 #ifndef OPENSSL_NO_QUIC
 #include "endpoint.h"
@@ -154,10 +154,7 @@ bool SetOption(Environment* env,
           env, "The %s option must be an ArrayBufferView", nameStr);
       return false;
     }
-    Store store;
-    if (!Store::From(value.As<ArrayBufferView>()).To(&store)) {
-      return false;
-    }
+    Store store = Store::CopyFrom(value.As<ArrayBufferView>());
     if (store.length() != TokenSecret::QUIC_TOKENSECRET_LEN) {
       Utf8Value nameStr(env->isolate(), name);
       THROW_ERR_INVALID_ARG_VALUE(
@@ -895,7 +892,7 @@ void Endpoint::Listen(const Session::Options& options) {
                        "not what you want.");
   }
 
-  auto context = TLSContext::CreateServer(options.tls_options);
+  auto context = TLSContext::CreateServer(env(), options.tls_options);
   if (!*context) {
     THROW_ERR_INVALID_STATE(
         env(), "Failed to create TLS context: %s", context->validation_error());
@@ -928,7 +925,7 @@ BaseObjectPtr<Session> Endpoint::Connect(
         config,
         session_ticket.has_value() ? "yes" : "no");
 
-  auto tls_context = TLSContext::CreateClient(options.tls_options);
+  auto tls_context = TLSContext::CreateClient(env(), options.tls_options);
   if (!*tls_context) {
     THROW_ERR_INVALID_STATE(env(),
                             "Failed to create TLS context: %s",
@@ -1740,4 +1737,4 @@ JS_METHOD_IMPL(Endpoint::Ref) {
 }  // namespace quic
 }  // namespace node
 #endif  // OPENSSL_NO_QUIC
-#endif  // HAVE_OPENSSL
+#endif  // HAVE_OPENSSL && HAVE_QUIC

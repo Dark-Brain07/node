@@ -138,6 +138,23 @@ void InitCryptoOnce() {
 #endif
 
   OPENSSL_init_ssl(0, settings);
+
+#if OPENSSL_WITH_PQC
+  // Configure all loaded providers to prefer seed-only format for ML-KEM and
+  // ML-DSA private keys in PKCS#8 export, falling back to priv-only when a
+  // seed is not available. The provider encoder reads these parameters at
+  // encoding time via ossl_prov_ctx_get_param().
+  OSSL_PROVIDER_do_all(
+      nullptr,
+      [](OSSL_PROVIDER* provider, void*) -> int {
+        OSSL_PROVIDER_add_conf_parameter(
+            provider, "ml-kem.output_formats", "seed-only,priv-only");
+        OSSL_PROVIDER_add_conf_parameter(
+            provider, "ml-dsa.output_formats", "seed-only,priv-only");
+        return 1;
+      },
+      nullptr);
+#endif
   OPENSSL_INIT_free(settings);
   settings = nullptr;
 
@@ -556,7 +573,9 @@ Maybe<void> Decorate(Environment* env,
 #define V(name) case ERR_LIB_##name: lib = #name "_"; break;
     const char* lib = "";
     const char* prefix = "OSSL_";
-    switch (ERR_GET_LIB(err)) { OSSL_ERROR_CODES_MAP(V) }
+    switch (ERR_GET_LIB(err)) { /* NOLINT(whitespace/newline) */
+      OSSL_ERROR_CODES_MAP(V)
+    }
 #undef V
 #undef OSSL_ERROR_CODES_MAP
     // Don't generate codes like "ERR_OSSL_SSL_".

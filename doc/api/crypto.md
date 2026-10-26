@@ -93,17 +93,17 @@ The following table lists the asymmetric key types recognized by the [`KeyObject
 | `'rsa-pss'`                        | RSA PSS            | 1.2.840.113549.1.1.10   |
 | `'rsa'`                            | RSA                | 1.2.840.113549.1.1.1    |
 | `'slh-dsa-sha2-128f'`[^openssl35]  | SLH-DSA-SHA2-128f  | 2.16.840.1.101.3.4.3.21 |
-| `'slh-dsa-sha2-128s'`[^openssl35]  | SLH-DSA-SHA2-128s  | 2.16.840.1.101.3.4.3.22 |
+| `'slh-dsa-sha2-128s'`[^openssl35]  | SLH-DSA-SHA2-128s  | 2.16.840.1.101.3.4.3.20 |
 | `'slh-dsa-sha2-192f'`[^openssl35]  | SLH-DSA-SHA2-192f  | 2.16.840.1.101.3.4.3.23 |
-| `'slh-dsa-sha2-192s'`[^openssl35]  | SLH-DSA-SHA2-192s  | 2.16.840.1.101.3.4.3.24 |
+| `'slh-dsa-sha2-192s'`[^openssl35]  | SLH-DSA-SHA2-192s  | 2.16.840.1.101.3.4.3.22 |
 | `'slh-dsa-sha2-256f'`[^openssl35]  | SLH-DSA-SHA2-256f  | 2.16.840.1.101.3.4.3.25 |
-| `'slh-dsa-sha2-256s'`[^openssl35]  | SLH-DSA-SHA2-256s  | 2.16.840.1.101.3.4.3.26 |
+| `'slh-dsa-sha2-256s'`[^openssl35]  | SLH-DSA-SHA2-256s  | 2.16.840.1.101.3.4.3.24 |
 | `'slh-dsa-shake-128f'`[^openssl35] | SLH-DSA-SHAKE-128f | 2.16.840.1.101.3.4.3.27 |
-| `'slh-dsa-shake-128s'`[^openssl35] | SLH-DSA-SHAKE-128s | 2.16.840.1.101.3.4.3.28 |
+| `'slh-dsa-shake-128s'`[^openssl35] | SLH-DSA-SHAKE-128s | 2.16.840.1.101.3.4.3.26 |
 | `'slh-dsa-shake-192f'`[^openssl35] | SLH-DSA-SHAKE-192f | 2.16.840.1.101.3.4.3.29 |
-| `'slh-dsa-shake-192s'`[^openssl35] | SLH-DSA-SHAKE-192s | 2.16.840.1.101.3.4.3.30 |
+| `'slh-dsa-shake-192s'`[^openssl35] | SLH-DSA-SHAKE-192s | 2.16.840.1.101.3.4.3.28 |
 | `'slh-dsa-shake-256f'`[^openssl35] | SLH-DSA-SHAKE-256f | 2.16.840.1.101.3.4.3.31 |
-| `'slh-dsa-shake-256s'`[^openssl35] | SLH-DSA-SHAKE-256s | 2.16.840.1.101.3.4.3.32 |
+| `'slh-dsa-shake-256s'`[^openssl35] | SLH-DSA-SHAKE-256s | 2.16.840.1.101.3.4.3.30 |
 | `'x25519'`                         | X25519             | 1.3.101.110             |
 | `'x448'`                           | X448               | 1.3.101.111             |
 
@@ -925,6 +925,11 @@ When passing a string as the `buffer`, please consider
 <!-- YAML
 added: v1.0.0
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/61084
+    description: Using GCM tag lengths other than 128 bits without specifying
+                 the `authTagLength` option when creating `decipher` is not
+                 allowed anymore.
   - version:
     - v22.0.0
     - v20.13.0
@@ -2116,6 +2121,11 @@ type, value, and parameters. This method is not
 <!-- YAML
 added: v11.6.0
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/62178
+    description: ML-KEM and ML-DSA private key `'pkcs8'` export now
+                 uses seed-only format by default when a seed is
+                 available.
   - version: v15.9.0
     pr-url: https://github.com/nodejs/node/pull/37081
     description: Added support for `'jwk'` format.
@@ -4009,8 +4019,8 @@ changes:
   * `publicKey` {string | Buffer | KeyObject}
   * `privateKey` {string | Buffer | KeyObject}
 
-Generates a new asymmetric key pair of the given `type`. RSA, RSA-PSS, DSA, EC,
-Ed25519, Ed448, X25519, X448, and DH are currently supported.
+Generates a new asymmetric key pair of the given `type`. See the
+supported [asymmetric key types][].
 
 If a `publicKeyEncoding` or `privateKeyEncoding` was specified, this function
 behaves as if [`keyObject.export()`][] had been called on its result. Otherwise,
@@ -4131,8 +4141,8 @@ changes:
   * `publicKey` {string | Buffer | KeyObject}
   * `privateKey` {string | Buffer | KeyObject}
 
-Generates a new asymmetric key pair of the given `type`. RSA, RSA-PSS, DSA, EC,
-Ed25519, Ed448, X25519, X448, DH, and ML-DSA[^openssl35] are currently supported.
+Generates a new asymmetric key pair of the given `type`. See the
+supported [asymmetric key types][].
 
 If a `publicKeyEncoding` or `privateKeyEncoding` was specified, this function
 behaves as if [`keyObject.export()`][] had been called on its result. Otherwise,
@@ -4526,12 +4536,15 @@ added:
  - v21.7.0
  - v20.12.0
 changes:
+  - version:
+     - v25.5.0
+     - v24.13.1
+    pr-url: https://github.com/nodejs/node/pull/60994
+    description: This API is no longer experimental.
   - version: v24.4.0
     pr-url: https://github.com/nodejs/node/pull/58121
     description: The `outputLength` option was added for XOF hash functions.
 -->
-
-> Stability: 1.2 - Release candidate
 
 * `algorithm` {string|undefined}
 * `data` {string|Buffer|TypedArray|DataView} When `data` is a
@@ -5998,7 +6011,7 @@ binary data. As such, many `crypto` classes have methods not
 typically found on other Node.js classes that implement the [streams][stream]
 API (e.g. `update()`, `final()`, or `digest()`). Also, many methods accepted
 and returned `'latin1'` encoded strings by default rather than `Buffer`s. This
-default was changed after Node.js v0.8 to use [`Buffer`][] objects by default
+default was changed in Node.js 0.9.3 to use [`Buffer`][] objects by default
 instead.
 
 ### Support for weak or compromised algorithms

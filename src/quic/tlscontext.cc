@@ -1,4 +1,4 @@
-#if HAVE_OPENSSL
+#if HAVE_OPENSSL && HAVE_QUIC
 #include "guard.h"
 #ifndef OPENSSL_NO_QUIC
 #include <async_wrap-inl.h>
@@ -133,16 +133,10 @@ bool SetOption(Environment* env,
         }
       } else if constexpr (std::is_same<T, Store>::value) {
         if (item->IsArrayBufferView()) {
-          Store store;
-          if (!Store::From(item.As<v8::ArrayBufferView>()).To(&store)) {
-            return false;
-          }
+          Store store = Store::CopyFrom(item.As<v8::ArrayBufferView>());
           (options->*member).push_back(std::move(store));
         } else if (item->IsArrayBuffer()) {
-          Store store;
-          if (!Store::From(item.As<ArrayBuffer>()).To(&store)) {
-            return false;
-          }
+          Store store = Store::CopyFrom(item.As<ArrayBuffer>());
           (options->*member).push_back(std::move(store));
         } else {
           Utf8Value namestr(env->isolate(), name);
@@ -168,16 +162,10 @@ bool SetOption(Environment* env,
       }
     } else if constexpr (std::is_same<T, Store>::value) {
       if (value->IsArrayBufferView()) {
-        Store store;
-        if (!Store::From(value.As<v8::ArrayBufferView>()).To(&store)) {
-          return false;
-        }
+        Store store = Store::CopyFrom(value.As<v8::ArrayBufferView>());
         (options->*member).push_back(std::move(store));
       } else if (value->IsArrayBuffer()) {
-        Store store;
-        if (!Store::From(value.As<ArrayBuffer>()).To(&store)) {
-          return false;
-        }
+        Store store = Store::CopyFrom(value.As<ArrayBuffer>());
         (options->*member).push_back(std::move(store));
       } else {
         Utf8Value namestr(env->isolate(), name);
@@ -293,16 +281,18 @@ bool OSSLContext::ConfigureClient() const {
 
 // ============================================================================
 
-std::shared_ptr<TLSContext> TLSContext::CreateClient(const Options& options) {
-  return std::make_shared<TLSContext>(Side::CLIENT, options);
+std::shared_ptr<TLSContext> TLSContext::CreateClient(Environment* env,
+                                                     const Options& options) {
+  return std::make_shared<TLSContext>(env, Side::CLIENT, options);
 }
 
-std::shared_ptr<TLSContext> TLSContext::CreateServer(const Options& options) {
-  return std::make_shared<TLSContext>(Side::SERVER, options);
+std::shared_ptr<TLSContext> TLSContext::CreateServer(Environment* env,
+                                                     const Options& options) {
+  return std::make_shared<TLSContext>(env, Side::SERVER, options);
 }
 
-TLSContext::TLSContext(Side side, const Options& options)
-    : side_(side), options_(options), ctx_(Initialize()) {}
+TLSContext::TLSContext(Environment* env, Side side, const Options& options)
+    : side_(side), options_(options), ctx_(Initialize(env)) {}
 
 TLSContext::operator SSL_CTX*() const {
   DCHECK(ctx_);
@@ -388,7 +378,7 @@ std::unique_ptr<TLSSession> TLSContext::NewSession(
       session, shared_from_this(), maybeSessionTicket);
 }
 
-SSLCtxPointer TLSContext::Initialize() {
+SSLCtxPointer TLSContext::Initialize(Environment* env) {
   SSLCtxPointer ctx;
   switch (side_) {
     case Side::SERVER: {
@@ -460,14 +450,14 @@ SSLCtxPointer TLSContext::Initialize() {
   {
     ClearErrorOnReturn clear_error_on_return;
     if (options_.ca.empty()) {
-      auto store = crypto::GetOrCreateRootCertStore();
+      auto store = crypto::GetOrCreateRootCertStore(env);
       X509_STORE_up_ref(store);
       SSL_CTX_set_cert_store(ctx.get(), store);
     } else {
       for (const auto& ca : options_.ca) {
         uv_buf_t buf = ca;
         if (buf.len == 0) {
-          auto store = crypto::GetOrCreateRootCertStore();
+          auto store = crypto::GetOrCreateRootCertStore(env);
           X509_STORE_up_ref(store);
           SSL_CTX_set_cert_store(ctx.get(), store);
         } else {
@@ -477,8 +467,8 @@ SSLCtxPointer TLSContext::Initialize() {
           while (
               auto x509 = X509Pointer(PEM_read_bio_X509_AUX(
                   bio.get(), nullptr, crypto::NoPasswordCallback, nullptr))) {
-            if (cert_store == crypto::GetOrCreateRootCertStore()) {
-              cert_store = crypto::NewRootCertStore();
+            if (cert_store == crypto::GetOrCreateRootCertStore(env)) {
+              cert_store = crypto::NewRootCertStore(env);
               SSL_CTX_set_cert_store(ctx.get(), cert_store);
             }
             CHECK_EQ(1, X509_STORE_add_cert(cert_store, x509.get()));
@@ -535,8 +525,8 @@ SSLCtxPointer TLSContext::Initialize() {
       }
 
       X509_STORE* cert_store = SSL_CTX_get_cert_store(ctx.get());
-      if (cert_store == crypto::GetOrCreateRootCertStore()) {
-        cert_store = crypto::NewRootCertStore();
+      if (cert_store == crypto::GetOrCreateRootCertStore(env)) {
+        cert_store = crypto::NewRootCertStore(env);
         SSL_CTX_set_cert_store(ctx.get(), cert_store);
       }
 
@@ -834,4 +824,4 @@ void TLSSession::MemoryInfo(MemoryTracker* tracker) const {
 }  // namespace quic
 }  // namespace node
 #endif  // OPENSSL_NO_QUIC
-#endif  // HAVE_OPENSSL
+#endif  // HAVE_OPENSSL && HAVE_QUIC

@@ -96,10 +96,6 @@ const char* CompileCacheEntry::type_name() const {
       return "ESM";
     case CachedCodeType::kStrippedTypeScript:
       return "StrippedTypeScript";
-    case CachedCodeType::kTransformedTypeScript:
-      return "TransformedTypeScript";
-    case CachedCodeType::kTransformedTypeScriptWithSourceMaps:
-      return "TransformedTypeScriptWithSourceMaps";
     default:
       UNREACHABLE();
   }
@@ -232,10 +228,8 @@ static std::string GetRelativePath(std::string_view path,
 // the paths to wide strings before using std::filesystem::path.
 // On other platforms, std::filesystem::path can handle UTF-8 directly.
 #ifdef _WIN32
-  std::filesystem::path module_path(
-      ConvertToWideString(std::string(path), CP_UTF8));
-  std::filesystem::path base_path(
-      ConvertToWideString(std::string(base), CP_UTF8));
+  std::filesystem::path module_path(ConvertUTF8ToWideString(std::string(path)));
+  std::filesystem::path base_path(ConvertUTF8ToWideString(std::string(base)));
 #else
   std::filesystem::path module_path(path);
   std::filesystem::path base_path(base);
@@ -267,8 +261,8 @@ CompileCacheEntry* CompileCacheHandler::GetOrInsert(Local<String> code,
     if (!relative_path.empty()) {
       file_path = relative_path;
       Debug("[compile cache] using relative path %s from %s\n",
-            file_path.c_str(),
-            compile_cache_dir_.c_str());
+            file_path,
+            compile_cache_dir_);
     }
   }
   uint32_t key = GetCacheKey(file_path, type);
@@ -355,9 +349,7 @@ void CompileCacheHandler::MaybeSave(CompileCacheEntry* entry,
 
 void CompileCacheHandler::MaybeSave(CompileCacheEntry* entry,
                                     std::string_view transpiled) {
-  CHECK(entry->type == CachedCodeType::kStrippedTypeScript ||
-        entry->type == CachedCodeType::kTransformedTypeScript ||
-        entry->type == CachedCodeType::kTransformedTypeScriptWithSourceMaps);
+  CHECK(entry->type == CachedCodeType::kStrippedTypeScript);
   Debug("[compile cache] saving transpilation cache for %s %s\n",
         entry->type_name(),
         entry->source_filename);

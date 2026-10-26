@@ -27,6 +27,7 @@
 #include <type_traits>  // std::remove_reference
 #include "base_object_types.h"
 #include "memory_tracker.h"
+#include "node_v8_embedder.h"
 #include "util.h"
 #include "v8.h"
 
@@ -109,9 +110,9 @@ class BaseObject : public MemoryRetainer {
   // the `BaseObject*` pointer) and a constructor that initializes that field
   // to `nullptr`.
   static v8::Local<v8::FunctionTemplate> MakeLazilyInitializedJSTemplate(
-      IsolateData* isolate);
+      IsolateData* isolate, int internal_field_count = kInternalFieldCount);
   static v8::Local<v8::FunctionTemplate> MakeLazilyInitializedJSTemplate(
-      Environment* env);
+      Environment* env, int internal_field_count = kInternalFieldCount);
 
   // Setter/Getter pair for internal fields that can be passed to SetAccessor.
   template <int Field>

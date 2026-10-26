@@ -85,7 +85,6 @@ using v8::ScriptCompiler;
 using v8::ScriptOrigin;
 using v8::String;
 using v8::Symbol;
-using v8::Uint32;
 using v8::UnboundScript;
 using v8::Value;
 
@@ -108,15 +107,6 @@ using v8::Value;
 //
 // For every `set` of a global property, the interceptor callback defines or
 // changes the property both on the sandbox and the global proxy.
-
-namespace {
-
-// Convert an int to a V8 Name (String or Symbol).
-MaybeLocal<String> Uint32ToName(Local<Context> context, uint32_t index) {
-  return Uint32::New(Isolate::GetCurrent(), index)->ToString(context);
-}
-
-}  // anonymous namespace
 
 ContextifyContext* ContextifyContext::New(Environment* env,
                                           Local<Object> sandbox_obj,
@@ -164,9 +154,12 @@ ContextifyContext::ContextifyContext(Environment* env,
   // This should only be done after the initial initializations of the context
   // global object is finished.
   DCHECK_NULL(v8_context->GetAlignedPointerFromEmbedderData(
-      ContextEmbedderIndex::kContextifyContext));
+      ContextEmbedderIndex::kContextifyContext,
+      EmbedderDataTag::kPerContextData));
   v8_context->SetAlignedPointerInEmbedderData(
-      ContextEmbedderIndex::kContextifyContext, this);
+      ContextEmbedderIndex::kContextifyContext,
+      this,
+      EmbedderDataTag::kPerContextData);
 }
 
 void ContextifyContext::InitializeGlobalTemplates(IsolateData* isolate_data) {
@@ -473,7 +466,8 @@ ContextifyContext* ContextifyContext::Get(Local<Object> object) {
   }
   return static_cast<ContextifyContext*>(
       context->GetAlignedPointerFromEmbedderData(
-          ContextEmbedderIndex::kContextifyContext));
+          ContextEmbedderIndex::kContextifyContext,
+          EmbedderDataTag::kPerContextData));
 }
 
 bool ContextifyContext::IsStillInitializing(const ContextifyContext* ctx) {
@@ -845,11 +839,8 @@ Intercepted ContextifyContext::IndexedPropertyQueryCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertyQueryCallback(name, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertyQueryCallback(name, args);
 }
 
 // static
@@ -862,11 +853,8 @@ Intercepted ContextifyContext::IndexedPropertyGetterCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertyGetterCallback(name, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertyGetterCallback(name, args);
 }
 
 Intercepted ContextifyContext::IndexedPropertySetterCallback(
@@ -880,11 +868,8 @@ Intercepted ContextifyContext::IndexedPropertySetterCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertySetterCallback(name, value, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertySetterCallback(name, value, args);
 }
 
 // static
@@ -897,11 +882,8 @@ Intercepted ContextifyContext::IndexedPropertyDescriptorCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertyDescriptorCallback(name, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertyDescriptorCallback(name, args);
 }
 
 Intercepted ContextifyContext::IndexedPropertyDefinerCallback(
@@ -915,11 +897,8 @@ Intercepted ContextifyContext::IndexedPropertyDefinerCallback(
     return Intercepted::kNo;
   }
 
-  Local<String> name;
-  if (Uint32ToName(ctx->context(), index).ToLocal(&name)) {
-    return ContextifyContext::PropertyDefinerCallback(name, desc, args);
-  }
-  return Intercepted::kNo;
+  Local<String> name = Uint32ToString(ctx->context(), index);
+  return ContextifyContext::PropertyDefinerCallback(name, desc, args);
 }
 
 // static
@@ -1665,13 +1644,13 @@ static MaybeLocal<Function> CompileFunctionForCJSLoader(
     Local<String> filename,
     bool* cache_rejected,
     bool is_cjs_scope,
-    ScriptCompiler::CachedData* cached_data) {
+    ScriptCompiler::CachedData* cached_data,
+    Local<Symbol> host_defined_option_symbol) {
   Isolate* isolate = Isolate::GetCurrent();
   EscapableHandleScope scope(isolate);
 
-  Local<Symbol> symbol = env->vm_dynamic_import_default_internal();
-  Local<PrimitiveArray> hdo =
-      loader::ModuleWrap::GetHostDefinedOptions(isolate, symbol);
+  Local<PrimitiveArray> hdo = loader::ModuleWrap::GetHostDefinedOptions(
+      isolate, host_defined_option_symbol);
   ScriptOrigin origin(filename,
                       0,               // line offset
                       0,               // column offset
@@ -1764,6 +1743,12 @@ static void CompileFunctionForCJSLoader(
   Realm* realm = Realm::GetCurrent(context);
   Environment* env = realm->env();
 
+  Local<Symbol> host_defined_option_symbol =
+      env->vm_dynamic_import_default_internal();
+  if (args.Length() > 4 && args[4].As<Boolean>()->Value()) {
+    host_defined_option_symbol = env->embedder_module_hdo();
+  }
+
   bool cache_rejected = false;
   Local<Function> fn;
   Local<Value> cjs_exception;
@@ -1792,8 +1777,14 @@ static void CompileFunctionForCJSLoader(
   {
     ShouldNotAbortOnUncaughtScope no_abort_scope(realm->env());
     TryCatchScope try_catch(env);
-    if (!CompileFunctionForCJSLoader(
-             env, context, code, filename, &cache_rejected, true, cached_data)
+    if (!CompileFunctionForCJSLoader(env,
+                                     context,
+                                     code,
+                                     filename,
+                                     &cache_rejected,
+                                     true,
+                                     cached_data,
+                                     host_defined_option_symbol)
              .ToLocal(&fn)) {
       CHECK(try_catch.HasCaught());
       CHECK(!try_catch.HasTerminated());
@@ -1954,8 +1945,14 @@ static void ContainsModuleSyntax(const FunctionCallbackInfo<Value>& args) {
     Local<Function> fn;
     TryCatchScope try_catch(env);
     ShouldNotAbortOnUncaughtScope no_abort_scope(env);
-    if (CompileFunctionForCJSLoader(
-            env, context, code, filename, &cache_rejected, cjs_var, nullptr)
+    if (CompileFunctionForCJSLoader(env,
+                                    context,
+                                    code,
+                                    filename,
+                                    &cache_rejected,
+                                    cjs_var,
+                                    nullptr,
+                                    env->vm_dynamic_import_default_internal())
             .ToLocal(&fn)) {
       args.GetReturnValue().Set(false);
       return;

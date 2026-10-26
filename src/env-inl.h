@@ -196,9 +196,8 @@ inline Environment* Environment::GetCurrent(v8::Local<v8::Context> context) {
   if (!ContextEmbedderTag::IsNodeContext(context)) [[unlikely]] {
     return nullptr;
   }
-  return static_cast<Environment*>(
-      context->GetAlignedPointerFromEmbedderData(
-          ContextEmbedderIndex::kEnvironment));
+  return static_cast<Environment*>(context->GetAlignedPointerFromEmbedderData(
+      ContextEmbedderIndex::kEnvironment, EmbedderDataTag::kPerContextData));
 }
 
 inline Environment* Environment::GetCurrent(
@@ -898,7 +897,7 @@ v8::Local<v8::Context> Environment::context() const {
   return principal_realm()->context();
 }
 
-Realm* Environment::principal_realm() const {
+PrincipalRealm* Environment::principal_realm() const {
   return principal_realm_.get();
 }
 

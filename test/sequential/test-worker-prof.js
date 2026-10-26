@@ -16,10 +16,16 @@ if (process.argv[2] === 'child') {
   console.log('parent prof file:', parentProf);
 
   const { Worker } = require('worker_threads');
+  let spinTime = 1500;
+  if (common.isWindows || common.isMacOS || process.arch === 's390x') {
+    // Windows and MacOS tend to be flaky in CI, s390x as well.
+    // Give them more spins.
+    spinTime = 4500;
+  }
   const w = new Worker(`
   const { parentPort, workerData } = require('worker_threads');
 
-  const SPIN_MS = 1500;
+  const SPIN_MS = ${spinTime};
   const start = Date.now();
   parentPort.on('message', (data) => {
     if (Date.now() - start < SPIN_MS) {
@@ -58,7 +64,7 @@ if (process.argv[2] === 'child') {
         assert.match(output, workerProfRegexp);
         assert.match(output, parentProfRegexp);
         return true;
-      }
+      },
     });
   const workerProf = stdout.match(workerProfRegexp)[1];
   const parentProf = stdout.match(parentProfRegexp)[1];
